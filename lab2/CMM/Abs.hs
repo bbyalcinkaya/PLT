@@ -32,7 +32,8 @@ data Stm
   deriving (C.Eq, C.Ord, C.Show, C.Read)
 
 data Exp
-    = EBool BoolLit
+    = ECast Type Exp
+    | EBool BoolLit
     | EInt Integer
     | EDouble Double
     | EId Id

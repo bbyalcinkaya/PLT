@@ -27,11 +27,13 @@ check s = do
           putStrLn "TYPE ERROR"
           putStrLn err
           exitFailure
-        Ok _ -> catchJust (\e -> if isUserError e then Just (ioeGetErrorString e) else Nothing) (interpret tree) $
-          \err -> do
-            putStrLn "INTERPRETER ERROR"
-            putStrLn err
-            exitFailure
+        Ok x -> do
+          print x
+          catchJust (\e -> if isUserError e then Just (ioeGetErrorString e) else Nothing) (interpret tree) $
+            \err -> do
+              putStrLn "INTERPRETER ERROR"
+              putStrLn err
+              exitFailure
 
 -- | Main: read file passed by only command line argument and call 'check'.
 

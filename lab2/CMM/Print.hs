@@ -142,6 +142,7 @@ instance Print [CMM.Abs.Stm] where
 
 instance Print CMM.Abs.Exp where
   prt i e = case e of
+    CMM.Abs.ECast type_ exp -> prPrec i 0 (concatD [doc (showString "("), prt 0 type_, doc (showString ")"), prt 0 exp])
     CMM.Abs.EBool boollit -> prPrec i 6 (concatD [prt 0 boollit])
     CMM.Abs.EInt n -> prPrec i 6 (concatD [prt 0 n])
     CMM.Abs.EDouble d -> prPrec i 6 (concatD [prt 0 d])

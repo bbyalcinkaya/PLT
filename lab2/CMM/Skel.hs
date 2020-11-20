@@ -33,6 +33,7 @@ transStm x = case x of
   CMM.Abs.SIfElse exp stm1 stm2 -> failure x
 transExp :: CMM.Abs.Exp -> Result
 transExp x = case x of
+  CMM.Abs.ECast type_ exp -> failure x
   CMM.Abs.EBool boollit -> failure x
   CMM.Abs.EInt integer -> failure x
   CMM.Abs.EDouble double -> failure x

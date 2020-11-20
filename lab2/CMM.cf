@@ -24,7 +24,7 @@ SIfElse.   Stm    ::= "if" "(" Exp ")" Stm "else" Stm ;
 terminator Stm "" ;
 
 -- # Expressions.
-
+internal ECast.  Exp ::= "(" Type ")" Exp;
 -- ## Atomic expressions.
 
 -- ### Literals.
