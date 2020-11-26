@@ -1,3 +1,5 @@
+{-# Language LambdaCase #-}
+
 module TypeChecker where
 
 import Control.Monad
@@ -46,9 +48,7 @@ createSignature env (DFun retType id args _)
         argType (ADecl t _) = t
 
 checkFunctions :: Env -> [Def] -> Err [Def]
-checkFunctions signatures defs = do
-    defs' <- mapM (checkFunction signatures) defs
-    return defs'
+checkFunctions signatures = mapM (checkFunction signatures)
 
 checkFunction :: Env -> Def -> Err Def
 checkFunction env (DFun retType id args stmts) = do
@@ -57,7 +57,7 @@ checkFunction env (DFun retType id args stmts) = do
     return (DFun retType id args typedStmts)
 
 checkStmts :: Env -> Type -> [Stm] -> Err (Env, [Stm])
-checkStmts env retType [] = return (env, [])
+checkStmts env _ [] = return (env, [])
 checkStmts env retType (x:xs) = do
     (env', x') <- checkStmt env retType x
     (env'', xs') <- checkStmts env' retType xs
@@ -85,7 +85,7 @@ checkStmt env retType (SWhile exp body) = do
     (_, body') <- checkStmt (newBlock env) retType body
     return (env, SWhile exp' body')
 checkStmt env retType (SBlock smts) = do
-    (env', stmts') <- checkStmts (newBlock env) retType smts
+    (_, stmts') <- checkStmts (newBlock env) retType smts
     return (env, SBlock stmts')
 checkStmt env retType (SIfElse exp tStmt fStmt) = do
     exp' <- checkExp env Type_bool exp
@@ -94,15 +94,15 @@ checkStmt env retType (SIfElse exp tStmt fStmt) = do
     return (env, SIfElse exp' tStmt' fStmt')
 
 checkExp :: Env -> Type -> Exp -> Err Exp
-checkExp env typ exp = do
-    exp' <- inferExp env exp
-    case exp' of
-        ECast typ2 _ -> if typ2 == typ then
-                            return exp'
+checkExp env typ exp =
+    inferExp env exp >>= \case
+        ECast typ2 exp' -> if typ2 `isSubType` typ   -- handle coercions
+                        then return $ ECast typ exp' -- cast to checked type
                         else
-                            Bad $ "type of " ++ printTree exp ++
-                                "expected " ++ printTree typ ++
+                            Bad $ "type of " ++ printTree exp ++ "\n" ++
+                                "expected " ++ printTree typ ++ "\n" ++
                                 "but found " ++ printTree typ2
+        -- result of inferExp is always an ECast
         _ -> Bad "unexpected error"
 
 inferExp :: Env -> Exp -> Err Exp
@@ -112,81 +112,28 @@ inferExp _ e@(EDouble _) = Ok $ ECast Type_double e
 inferExp env e@(EId id) = do
     typ <- lookupVar env id
     return $ ECast typ e
-inferExp env e@(EApp id exps) = do
+inferExp env (EApp id exps) = do
     (argTypes, retType) <- lookupFun env id
     if length argTypes /= length exps
         then Bad "missing argument" -- TODO better error message
         else do
-            zipWithM_ (checkExp env) argTypes exps 
-            return $ ECast retType e -- TODO 
-            
-inferExp env e@(EPost id operator) = do
+            exps' <- zipWithM (checkExp env) argTypes exps 
+            return $ ECast retType (EApp id exps')              
+inferExp env e@(EPost id _) = do
     typ <- lookupVar env id
-    if typ == Type_double || typ == Type_int
+    if isNumeric typ
         then return $ ECast typ e
-        else Bad $ "Cannot increment/decrement " -- TODO msg
-inferExp env e@(EPre operator id) = do 
+        else Bad "Cannot increment/decrement " -- TODO msg
+inferExp env e@(EPre _ id) = do 
     typ <- lookupVar env id
-    if typ == Type_double || typ == Type_int
+    if isNumeric typ
         then return $ ECast typ e
-        else Bad $ "Cannot increment/decrement " -- TODO msg
-inferExp env (EMul lexp mulOp rexp) = do
-
-    el' <- inferExp env lexp
-    case el' of
-        ECast ltype el -> do
-            er' <- inferExp env rexp
-            case er' of
-                ECast rtype er -> do
-                    mType <- maxType ltype rtype
-                    if equivalentArithmetic ltype rtype
-                        then return $ ECast mType (EMul (ECast mType lexp) mulOp (ECast mType rexp))
-                        else Bad "operands of mul must be of the same type Mul"
-                _ -> Bad "impossible"
-        _ -> Bad "impossible"
-inferExp env (EAdd lexp addOp rexp) = do
-    el' <- inferExp env lexp
-    case el' of
-        ECast ltype el -> do
-            er' <- inferExp env rexp
-            case er' of
-                ECast rtype er -> do
-                    mType <- maxType ltype rtype
-                    if equivalentArithmetic ltype rtype
-                        then return $ ECast mType (EAdd (ECast mType lexp) addOp (ECast mType rexp))
-                        else Bad $ "operands of add must be of the same type " ++ show ltype ++ " " ++ show rtype
-                _ -> Bad "impossible"
-        _ -> Bad "impossible"
-inferExp env e@(ECmp lexp cmpOp rexp)
-    | cmpOp == ONEq || cmpOp == OEq = do
-        el' <- inferExp env lexp
-        case el' of
-            ECast ltype el -> do
-                er' <- inferExp env rexp
-                case er' of
-                    ECast rtype er -> do
-                        mType <- maxType ltype rtype
-                        if mType `elem` [Type_bool, Type_double, Type_int] then
-                            if equivalent ltype rtype 
-                                then return $ ECast Type_bool (ECmp (ECast mType lexp) cmpOp (ECast mType rexp)) 
-                                else Bad "operands of comparison must be of the same type"
-                        else
-                            Bad "operands of comparison must be bool, int, or double"
-                    _ -> Bad "impossible"
-            _ -> Bad "impossible"
-    | otherwise = do
-        el' <- inferExp env lexp
-        case el' of
-            ECast ltype el -> do
-                er' <- inferExp env rexp
-                case er' of
-                    ECast rtype er -> do
-                        mType <- maxType ltype rtype
-                        if equivalentArithmetic ltype rtype
-                            then return $ ECast Type_bool (ECmp (ECast mType lexp) cmpOp (ECast mType rexp))
-                            else Bad "operands of comparison must be of the same type"
-                    _ -> Bad "impossible"
-            _ -> Bad "impossible"
+        else Bad "Cannot increment/decrement " -- TODO msg
+inferExp env (EMul lexp mulOp rexp) = inferArithmetic env make lexp rexp where
+    make l r = EMul l mulOp r 
+inferExp env (EAdd lexp addOp rexp) = inferArithmetic env make lexp rexp where
+    make l r = EAdd l addOp r 
+inferExp env (ECmp lexp cmpOp rexp) = inferCmp env cmpOp lexp rexp
 inferExp env e@(EAnd lexp rexp) = do
     checkExp env Type_bool lexp
     checkExp env Type_bool rexp
@@ -198,24 +145,50 @@ inferExp env e@(EOr lexp rexp) = do
 inferExp env (EAss id exp) = do
     typ <- lookupVar env id
     exp' <- checkExp env typ exp
-    return $ ECast typ exp'
+    return $ ECast typ (EAss id exp')
 
-equivalentArithmetic :: Type -> Type -> Bool
-equivalentArithmetic Type_double Type_int = True
-equivalentArithmetic Type_int Type_double = True
-equivalentArithmetic Type_int Type_int = True
-equivalentArithmetic Type_double Type_double = True
-equivalentArithmetic _ _ = False
+--                    LHS    RHS    casted 
+inferBinArg :: Env -> Exp -> Exp -> Err (Type, Exp, Exp)
+inferBinArg env lexp rexp =
+    -- infer lhs
+    inferExp env lexp >>= \case
+        -- infer rhs
+        ECast ltype el -> inferExp env rexp >>= \case
+            ECast rtype er -> do
+                -- get max-type
+                mType <- maxType ltype rtype
+                return (mType, ECast mType el, ECast mType er)
+        
+        -- result of inferExp is always an ECast
+            _ -> Bad "impossible"
+        _ -> Bad "impossible"
 
-equivalent :: Type -> Type -> Bool
-equivalent Type_double Type_int = True
-equivalent Type_int Type_double = True
-equivalent a b = a == b
+inferArithmetic :: Env -> (Exp -> Exp -> Exp) -> Exp -> Exp -> Err Exp
+inferArithmetic env make lexp rexp = do
+    (typ, lexp', rexp') <- inferBinArg env lexp rexp
+    unless (isNumeric typ) (Bad "invalid argument type in arithmetic expression")
+    return $ ECast typ (make lexp' rexp')
 
+inferCmp :: Env -> CmpOp -> Exp -> Exp -> Err Exp
+inferCmp env cmpOp lexp rexp = do
+    (typ, lexp', rexp') <- inferBinArg env lexp rexp
+    unless (isComparable cmpOp typ) (Bad "invalid argument type in comparison")
+    return $ ECast Type_bool (ECmp lexp' cmpOp rexp')
+
+isNumeric :: Type -> Bool
+isNumeric Type_double = True
+isNumeric Type_int = True
+isNumeric _ = False
+
+isComparable :: CmpOp -> Type -> Bool
+isComparable cmpOp t
+    | cmpOp `elem` [OEq, ONEq]  = Type_void /= t
+    | otherwise                 = t `elem` [Type_double, Type_int]
+    
 maxType :: Type -> Type -> Err Type
 maxType Type_double Type_int = Ok Type_double
 maxType Type_int Type_double = Ok Type_double
-maxType a b = if equivalent a b then Ok a else Bad "types are not equivalent"
+maxType a b = if a == b then Ok a else Bad "types are not equivalent"
 
 isSubType :: Type -> Type -> Bool
 isSubType Type_int Type_double = True
@@ -258,5 +231,3 @@ newBlock (env, context) = (env, Map.empty : context)
 
 emptyEnv  :: Env
 emptyEnv = (builtIns, [])
-
--- MonadFail
