@@ -4,6 +4,7 @@ import CMM.Abs
 import CMM.ErrM
 import Data.Map (Map)
 import qualified Data.Map as Map
+import Control.Exception.Base (throw)
 
 type Environment ft vt = (Signatures ft, [Context vt])
 
@@ -20,7 +21,7 @@ lookupVar id (sig, context : rest) = case Map.lookup id context of
 -- define a new variable in the current scope
 newVar :: Id -> v -> Environment f v -> Environment f v
 newVar id val (sig, context : rest) = (sig, Map.insert id val context : rest)
-newVar _ _ (_, []) = error "cannot initialize a variable. context stack is empty" -- interpreter/typechecker bug
+newVar _ _ (_, []) = throw $ userError "cannot initialize a variable. context stack is empty" -- interpreter/typechecker bug
 
 -- update an existing variable in context stack
 updateVar :: Id -> v -> Environment f v -> Err (Environment f v)
@@ -43,11 +44,14 @@ newBlock :: Environment ft vt -> Environment ft vt
 newBlock (env, context) = (env, Map.empty : context)
 
 dropBlock :: Environment f v -> Environment f v
-dropBlock (_, []) = error "cannot drop block from empty stack" -- interpreter/typechecker bug
+dropBlock (_, []) = throw $ userError "cannot drop block from empty stack" -- interpreter/typechecker bug
 dropBlock (env, _ : rest) = (env, rest)
 
 emptyEnvironment :: Environment f v
 emptyEnvironment = (Map.empty, [])
+
+emptyContext :: Environment f v -> Environment f v'
+emptyContext (sig, _) = (sig, [])
 
 errorUndefinedVar :: Id -> Err a
 errorUndefinedVar (Id var) = Bad $ "undefined variable " ++ var

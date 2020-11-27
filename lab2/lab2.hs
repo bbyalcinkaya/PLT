@@ -27,16 +27,14 @@ check s = do
           putStrLn "TYPE ERROR"
           putStrLn err
           exitFailure
-        Ok x -> do
-          print x
-          catchJust (\e -> if isUserError e then Just (ioeGetErrorString e) else Nothing) (interpret tree) $
+        Ok annotatedTree -> do
+          catchJust (\e -> if isUserError e then Just (ioeGetErrorString e) else Nothing) (interpret annotatedTree) $
             \err -> do
               putStrLn "INTERPRETER ERROR"
               putStrLn err
               exitFailure
 
 -- | Main: read file passed by only command line argument and call 'check'.
-
 main :: IO ()
 main = do
   args <- getArgs

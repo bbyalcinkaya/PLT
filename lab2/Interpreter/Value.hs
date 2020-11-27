@@ -2,10 +2,11 @@
 
 module Interpreter.Value where
 
-import CMM.Abs (AddOp (..), CmpOp (..), Id (..), MulOp (..), Type (..))
+import CMM.Abs (IncDecOp(..), AddOp (..), CmpOp (..), Id (..), MulOp (..), Type (..))
 import CMM.Print (printTree)
 import Data.Map (Map)
 import qualified Data.Map as Map
+import Control.Exception.Base (throw)
 
 data Val
   = VBool Bool
@@ -26,7 +27,7 @@ cast Type_double (VInt i) = VDouble $ fromIntegral i
 cast Type_double v@(VDouble _) = v
 cast Type_int v@(VInt _) = v
 cast Type_bool v@(VBool _) = v
-cast typ v = error $ "Typechecker bug: cannot cast " ++ show v ++ " to " ++ printTree typ
+cast typ v = throw $ userError $ "Typechecker bug: cannot cast " ++ show v ++ " to " ++ printTree typ
 
 isTrue :: Val -> Bool
 isTrue (VBool True) = True
@@ -36,25 +37,29 @@ isFalse :: Val -> Bool
 isFalse (VBool False) = True
 isFalse _ = False
 
+incDec :: IncDecOp -> Val -> Val
+incDec OInc = incr
+incDec ODec = decr
+
 incr :: Val -> Val
 incr (VDouble x) = VDouble $ x + 1
 incr (VInt x) = VInt $ x + 1
-incr _ = error "Typechecker bug: cannot increment non-numeric value"
+incr _ = throw $ userError "Typechecker bug: cannot increment non-numeric value"
 
 decr :: Val -> Val
 decr (VDouble x) = VDouble $ x - 1
 decr (VInt x) = VInt $ x - 1
-decr _ = error "Typechecker bug: cannot decrement non-numeric value"
+decr _ = throw $ userError "Typechecker bug: cannot decrement non-numeric value"
 
 add :: AddOp -> Val -> Val -> Val
 add op (VDouble x) (VDouble y) = VDouble $ if op == OPlus then x + y else x - y
 add op (VInt x) (VInt y) = VInt $ if op == OPlus then x + y else x - y
-add _ _ _ = error "Typechecker bug: cannot add non-numeric values"
+add _ _ _ = throw $ userError "Typechecker bug: cannot add non-numeric values"
 
 mul :: MulOp -> Val -> Val -> Val
 mul op (VDouble x) (VDouble y) = VDouble $ if op == OTimes then x * y else x / y
 mul op (VInt x) (VInt y) = VInt $ if op == OTimes then x * y else x `div` y
-mul _ _ _ = error "Typechecker bug: cannot multiply non-numeric values"
+mul _ _ _ = throw $ userError "Typechecker bug: cannot multiply non-numeric values"
 
 comp :: CmpOp -> Val -> Val -> Val
 comp OEq a b = VBool (a == b)
