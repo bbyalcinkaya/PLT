@@ -18,7 +18,10 @@ import Data.Map (Map)
 import qualified Data.Map as Map
 
 import Annotated
-
+import CMM.Abs hiding (Program)
+import Compiler.Environment (FunType, Address,  Env )
+import qualified Compiler.Environment as Env
+import Compiler.Instruction
 -- | Entry point.
 
 compile
@@ -55,3 +58,18 @@ compile name _prg = header
     , ""
     , ";; END HEADER"
     ]
+
+compileStm :: Stm -> State Env ()
+compileStm = undefined
+
+compileExp :: Exp -> State Env ()
+compileExp = undefined
+
+emit :: Instruction -> State Env ()
+emit = undefined
+
+lookupVar :: Id -> State Env Address
+lookupVar id = Env.lookupVar id <$> get 
+  
+lookupFun :: Id -> State Env FunType
+lookupFun id = Env.lookupFun id <$> get 
