@@ -18,6 +18,12 @@ lookupVar id (sig, context : rest) = case Map.lookup id context of
   Just x -> Ok x
   Nothing -> lookupVar id (sig, rest)
 
+lookupScopeVar :: Id -> Environment f v -> Err v
+lookupScopeVar _ (_, []) = error "context stack is empty" -- interpreter/typechecker bug
+lookupScopeVar id (_, ctx:_) = case Map.lookup id ctx of
+  Just x -> Ok x
+  Nothing -> errorUndefinedVar id
+
 -- define a new variable in the current scope
 newVar :: Id -> v -> Environment f v -> Environment f v
 newVar id val (sig, context : rest) = (sig, Map.insert id val context : rest)
