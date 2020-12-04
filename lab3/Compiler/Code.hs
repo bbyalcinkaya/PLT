@@ -19,6 +19,9 @@ data ArithOp = ArithAdd AddOp | ArithMul MulOp deriving (Show, Eq, Read, Ord)
 
 data Fun = Fun Id FunType deriving (Show, Eq)
 
+funType :: Def -> FunType
+funType (DFun typ _ args _) = FunType typ $ map (\(ADecl t _) -> t) args
+
 data Code
   = Store Type Address
   | Load Type Address
@@ -112,9 +115,9 @@ instance ToJVM Code where
 
 instance ToJVM ArithOp where
   toJVM (ArithAdd OPlus) = "add"
+  toJVM (ArithAdd OMinus) = "sub"
   toJVM (ArithMul OTimes) = "mul"
   toJVM (ArithMul ODiv) = "div"
-  toJVM op = impossible op
 
 instance ToJVM CmpOp where
   toJVM OLt = "lt"
@@ -135,4 +138,13 @@ impossible c = error $ "impossible happened " ++ show c
 prefix :: Type -> String
 prefix Type_int = "i"
 prefix Type_double = "d"
+prefix Type_bool = "i"
 prefix _ = ""
+
+negateCmp :: CmpOp -> CmpOp
+negateCmp OEq = ONEq
+negateCmp ONEq = OEq
+negateCmp OLt = OGtEq
+negateCmp OGtEq = OLt
+negateCmp OGt = OLtEq
+negateCmp OLtEq = OGt

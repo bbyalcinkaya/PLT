@@ -17,7 +17,7 @@ import TypeChecker              (typecheck)
 
 callJasmin :: [String] -> IO ()
 callJasmin args = do
-  callProcess "jasmin" args
+  --callProcess "jasmin" args
   -- If `jasmin` is not in your PATH, you can try storing
   -- `jasmin.jar` in, for instance, $HOME/java-lib/ and calling
   -- `java -jar $HOME/java-lib/jasmin.jar' with the correct path
@@ -27,9 +27,9 @@ callJasmin args = do
   -- define the class `parser`.
   --
   -- homeDirectory <- getHomeDirectory
-  -- let jasminPath = homeDirectory ++ "/java-lib/jasmin.jar"
-  -- callProcess "java" $ ["-jar", jasminPath] ++ args
-
+  let jasminPath = "/home/burak/.jars/jasmin.jar"
+  callProcess "java" $ ["-jar", jasminPath] ++ args
+  
 -- | Main: read file passed by only command line argument and run compiler pipeline.
 
 main :: IO ()
