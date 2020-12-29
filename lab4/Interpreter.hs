@@ -65,7 +65,7 @@ setEnv :: Env -> Cxt -> Cxt
 setEnv env cxt = cxt {cxtEnv = env}
 
 insideEnv :: Env -> Eval a -> Eval a
-insideEnv env e = withReaderT (setEnv env) e
+insideEnv env = withReaderT (setEnv env)
 
 eval :: Exp -> Eval Value
 eval = \case
@@ -77,7 +77,7 @@ eval = \case
         asks (Map.lookup x . cxtSig) >>= \case
           Just e -> insideEnv Map.empty $ eval e
           Nothing -> throwError $ unwords ["unbound variable", printTree x]
-  EAbs x e -> VClos x e <$> asks cxtEnv
+  EAbs x e -> asks $ VClos x e . cxtEnv -- get the environment and create a closure
   EApp f a ->
     asks cxtStrategy >>= \case
       CallByValue -> do
