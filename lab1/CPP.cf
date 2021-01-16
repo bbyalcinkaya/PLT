@@ -1,0 +1,107 @@
+PDefs. Program ::= [Def];
+
+FDef. Def ::= Type CIdent "(" ArgList")" Body ;
+UDef. Def ::= "using" QConst ";" ;
+TDef. Def ::= Typedef;
+VDef. Def ::= VarDecl;
+
+ArgList. ArgList ::= [Arg];
+ArgConst. Arg ::= "const" Type MaybeIdent;
+ArgVar. Arg ::= Type MaybeIdent;
+
+IdentYes. MaybeIdent ::= CIdent;
+IdentNo.  MaybeIdent ::= ;
+
+separator Arg ",";
+FBody. Body ::= ";" ;
+FBodyStmts. Body ::= "{" [Stmt] "}" ;
+
+Typedef. Typedef ::= "typedef" Type CIdent ";" ;
+VDecl.      VarDecl ::= Type [Decl] ";";
+VDeclConst. VarDecl ::= "const" Type [Decl] ";";
+Decl. Decl ::= CIdent Init; 
+InitYes. Init ::= "=" Exp;
+InitNo.  Init ::= ;
+
+StmtVarDecl. Stmt ::= VarDecl ;
+StmtRet. Stmt ::= "return" Exp ";" ;
+StmtExp. Stmt ::= Exp ";" ;
+StmtIf. Stmt ::= "if" "(" Exp ")" Stmt Else; 
+ElseYes. Else ::= "else" Stmt;
+ElseNo. Else ::= ;
+
+separator nonempty Decl ",";
+StmtWhile. Stmt ::= "while" "(" Exp ")" Stmt;
+StmtDoWhile. Stmt ::= "do" Stmt "while" "(" Exp ")" ";";
+--                               VarDecl has semi-col 
+StmtFor. Stmt ::= "for" "(" VarDecl Exp ";" Exp ")" Stmt;
+
+StmtTypedef. Stmt ::= Typedef;
+StmtBlock. Stmt ::= "{" [Stmt] "}";
+
+separator Stmt "";
+
+separator Def "";
+
+EThrow. Exp ::= "throw" Exp;
+ECond. Exp2 ::= Exp3 "?" Exp ":" Exp2;
+EAssign. Exp2 ::= Exp3 "=" Exp2;
+EAssignAdd. Exp2 ::= Exp3 "+=" Exp2;
+EAssignSub. Exp2 ::= Exp3 "-=" Exp2;
+EDisjunction. Exp3 ::= Exp3 "||" Exp4;
+EConjunction. Exp4 ::= Exp4 "&&" Exp5;
+EEquality. Exp8 ::= Exp8 "==" Exp9;
+EInEquality. Exp8 ::= Exp8 "!=" Exp9;
+EGreaterThan. Exp9 ::= Exp9 ">" Exp10;
+EGreaterThanOrEqual. Exp9 ::= Exp9 ">=" Exp10;
+ELessThan. Exp9 ::= Exp9 "<" Exp10;
+ELessThanOrEqual. Exp9 ::= Exp9 "<=" Exp10;
+EShiftLeft.  Exp10 ::= Exp10 "<<" Exp11;
+EShiftRight. Exp10 ::= Exp10 ">>" Exp11;
+EAdd. Exp11 ::= Exp11 "+" Exp12;
+ESub. Exp11 ::= Exp11 "-" Exp12;
+EMul. Exp12 ::= Exp12 "*" Exp13;
+EDiv. Exp12 ::= Exp12 "/" Exp13;
+EMod. Exp12 ::= Exp12 "%" Exp13;
+ENot. Exp13 ::= "!" Exp13;
+EPreInc. Exp13 ::= "++" Exp13;
+EPreDec. Exp13 ::= "--" Exp13;
+EDereference. Exp13 ::= "*" Exp13;
+EPostInc. Exp14 ::= Exp14 "++" ;
+EPostDec. Exp14 ::= Exp14 "--";
+
+EIndex. Exp14 ::= Exp14 "[" Exp "]";
+EFCall. Exp14 ::= Exp14 "(" [Exp] ")";
+EProj. Exp14 ::= Exp14 "." Exp15;
+EProjPtr. Exp14 ::= Exp14 "->" Exp15;
+EInt. Exp15 ::= Integer;
+EString. Exp15 ::= [String];
+EChar. Exp15 ::= Char;
+EFloat. Exp15 ::= Double;
+EQConst. Exp15 ::= QConst ;
+
+separator Exp ",";
+
+separator nonempty String "";
+
+coercions Exp 15 ;
+
+-- qualified constant
+separator nonempty CIdent "::" ;
+-- [Ident]
+QConst. QConst ::= [CIdent] ;
+
+-- types
+TInt. Type ::= "int" ;
+TBool. Type ::= "bool" ;
+TChar. Type ::= "char" ;
+TDouble. Type ::= "double" ;
+TVoid. Type ::= "void" ;
+TQConst. Type ::= QConst ;
+TRef. Type ::= Type "&" ;
+
+token CIdent (["abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_"] ["abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_0123456789"]* );
+
+comment "//" ;
+comment "#" ;
+comment "/*" "*/" ;
